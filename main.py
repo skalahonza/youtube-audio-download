@@ -79,13 +79,37 @@ def display_videos(videos: list[dict]) -> None:
     console.print(table)
 
 
+def filter_videos(videos: list[dict]) -> list[dict]:
+    while True:
+        term = questionary.text(
+            "Filter by title (leave blank to show all):",
+            default="",
+        ).ask()
+
+        if term is None:
+            return videos
+
+        needle = term.strip().lower()
+        if not needle:
+            return videos
+
+        matched = [v for v in videos if needle in v["title"].lower()]
+        if matched:
+            console.print(f"[dim]{len(matched)} of {len(videos)} videos match '[bold]{term}[/bold]'[/dim]")
+            return matched
+
+        console.print(f"[yellow]No videos match '{term}'. Try a different filter.[/yellow]")
+
+
 def select_videos(videos: list[dict]) -> list[dict]:
+    visible = filter_videos(videos)
+
     choices = [
         questionary.Choice(
             title=f"{v['title'][:72]}  [{format_duration(v['duration'])}]",
             value=v,
         )
-        for v in videos
+        for v in visible
     ]
 
     console.print()
