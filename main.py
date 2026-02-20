@@ -104,18 +104,26 @@ def filter_videos(videos: list[dict]) -> list[dict]:
 def select_videos(videos: list[dict]) -> list[dict]:
     visible = filter_videos(videos)
 
-    choices = [
-        questionary.Choice(
-            title=f"{v['title'][:72]}  [{format_duration(v['duration'])}]",
-            value=v,
-        )
-        for v in visible
-    ]
-
     console.print()
+    mode = questionary.select(
+        "How do you want to select videos?",
+        choices=["Choose individually", f"Select all ({len(visible)})"],
+    ).ask()
+
+    if mode is None:
+        return []
+    if mode.startswith("Select all"):
+        return visible
+
     selected = questionary.checkbox(
         "Select videos to download  (↑↓ navigate · Space select · Enter confirm):",
-        choices=choices,
+        choices=[
+            questionary.Choice(
+                title=f"{v['title'][:72]}  [{format_duration(v['duration'])}]",
+                value=v,
+            )
+            for v in visible
+        ],
     ).ask()
 
     return selected or []
