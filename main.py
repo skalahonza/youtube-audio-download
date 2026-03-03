@@ -129,6 +129,15 @@ def select_videos(videos: list[dict]) -> list[dict]:
     return selected or []
 
 
+def find_existing_mp3(title: str, output_dir: Path) -> Path | None:
+    """Return the path to an existing MP3 if it matches the video title."""
+    # yt-dlp sanitises filenames, so replicate the same logic
+    with yt_dlp.YoutubeDL({"outtmpl": "%(title)s"}) as ydl:
+        safe_title = ydl.prepare_filename({"title": title})
+    candidate = output_dir / f"{safe_title}.mp3"
+    return candidate if candidate.exists() else None
+
+
 def download_as_mp3(videos: list[dict], output_dir: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -147,13 +156,23 @@ def download_as_mp3(videos: list[dict], output_dir: Path) -> None:
 
     console.print(f"\n[green]Saving MP3s to:[/green] {output_dir.resolve()}\n")
 
+    skipped = 0
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         for i, v in enumerate(videos, 1):
+            existing = find_existing_mp3(v["title"], output_dir)
+            if existing:
+                console.print(f"[dim]{i}/{len(videos)}[/dim] [yellow]Skipped (already exists):[/yellow] {v['title']}")
+                skipped += 1
+                continue
             console.rule(f"[bold cyan]{i}/{len(videos)}[/bold cyan] {v['title']}")
             url = f"https://www.youtube.com/watch?v={v['id']}"
             ydl.download([url])
 
-    console.print(f"\n[bold green]Done![/bold green] {len(videos)} file(s) saved to {output_dir.resolve()}")
+    downloaded = len(videos) - skipped
+    summary = f"{downloaded} file(s) downloaded"
+    if skipped:
+        summary += f", {skipped} skipped (already existed)"
+    console.print(f"\n[bold green]Done![/bold green] {summary}. Output: {output_dir.resolve()}")
 
 
 @app.command()
